@@ -1,5 +1,7 @@
 # TravelCol.online
 
+[![CI](https://github.com/Leonel-Palacios7/TravelCol.online/actions/workflows/ci.yml/badge.svg)](https://github.com/Leonel-Palacios7/TravelCol.online/actions/workflows/ci.yml)
+
 Marketplace turístico para Colombia. Conecta a turistas con prestadores locales para reservar y pagar experiencias en línea. El piloto es **Villeta, Cundinamarca**. La plataforma está en español (es-CO), cobra en pesos colombianos (COP) y usa la zona horaria `America/Bogota`. Los pagos van por **Wompi** (en este repositorio, configurado en Sandbox).
 
 > **Estado:** MVP funcional, verificado con pruebas automatizadas (unitarias, de integración, E2E y de imágenes Docker).
@@ -39,6 +41,7 @@ docs/         Documentación técnica, funcional, de seguridad y cumplimiento, y
 Requisitos: Node 22, pnpm 10 (`corepack enable`) y PostgreSQL 16 (local o `docker compose -f docker-compose.dev.yml up -d`).
 
 ```bash
+git clone https://github.com/Leonel-Palacios7/TravelCol.online.git && cd TravelCol.online
 ./scripts/dev-setup.sh   # dependencias, .env de ejemplo, migraciones y datos DEMO
 pnpm dev                 # web http://localhost:3000 · API http://localhost:4000/api/docs
 ```
@@ -82,6 +85,10 @@ pnpm --filter @travelcol/api wompi:simulate -- --reference <referencia> --status
 | E2E Playwright (escritorio y móvil) | 26/26 |
 | Imágenes Docker API y web | Compiladas y probadas: migración, semilla de producción, healthcheck y login a través de la web |
 | Respaldo y restauración | Probados con `pg_dump`/`pg_restore` sobre una base nueva |
+
+## Contribuir
+
+Trabaja en una rama, abre un pull request contra `main` y espera a que el CI pase (lint, tipos, pruebas unitarias, integración, E2E y construcción de imágenes). La plantilla del PR pide la evidencia de las pruebas. Para reportar una vulnerabilidad, sigue [SECURITY.md](SECURITY.md) y no abras un issue público.
 
 ## Documentación
 
