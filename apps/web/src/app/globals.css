@@ -1,0 +1,152 @@
+@import 'tailwindcss';
+
+/*
+ * Sistema de diseño TravelCol (ver docs/diseno.md).
+ * Inspiración: paneles selva/sol con bordes de papel rasgado, tarjetas ovaladas y acentos
+ * caligráficos, combinados con la identidad colombiana (amarillo, azul y rojo de la bandera
+ * como acentos discretos; verdes andinos como color principal).
+ */
+@theme {
+  --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+  --font-script: 'Caveat', 'Segoe Script', cursive;
+
+  --color-selva-950: #052b26;
+  --color-selva-900: #083a33;
+  --color-selva-800: #0b4a41;
+  --color-selva-700: #0e5c51;
+  --color-selva-600: #127065;
+  --color-selva-100: #dcefea;
+  --color-selva-50: #eef7f4;
+
+  --color-sol-500: #f6b40e;
+  --color-sol-400: #ffc533;
+  --color-sol-300: #ffd866;
+  --color-sol-100: #fff3cc;
+
+  --color-tierra-600: #c95a22;
+  --color-tierra-500: #e2733a;
+  --color-tierra-100: #fbe6da;
+
+  --color-crema: #fbf7f0;
+  --color-arena: #f3ebdd;
+  --color-tinta: #13211e;
+  --color-pizarra: #52625e;
+
+  --color-bandera-azul: #1f4e9e;
+  --color-bandera-rojo: #c8102e;
+
+  --radius-xl2: 1.25rem;
+  --shadow-suave: 0 10px 30px -12px rgb(8 58 51 / 0.25);
+  --shadow-tarjeta: 0 2px 4px rgb(8 58 51 / 0.04), 0 12px 32px -16px rgb(8 58 51 / 0.28);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-crema font-sans text-tinta antialiased;
+  }
+  ::selection {
+    @apply bg-sol-300 text-selva-950;
+  }
+  :focus-visible {
+    @apply outline-3 outline-offset-2 outline-sol-500;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply tracking-tight text-balance;
+  }
+}
+
+@utility btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+@utility btn-primary {
+    @apply btn bg-selva-800 text-white hover:bg-selva-700;
+  }
+
+@utility btn-sol {
+    @apply btn bg-sol-400 text-selva-950 hover:bg-sol-300;
+  }
+
+@utility btn-tierra {
+    @apply btn bg-tierra-500 text-white hover:bg-tierra-600;
+  }
+
+@utility btn-ghost {
+    @apply btn border border-selva-800/20 bg-white text-selva-900 hover:border-selva-800/50;
+  }
+
+@utility btn-danger {
+    @apply btn border border-bandera-rojo/30 bg-white text-bandera-rojo hover:bg-bandera-rojo/5;
+  }
+
+@utility card {
+    @apply rounded-xl2 bg-white shadow-tarjeta;
+  }
+
+@utility input {
+    @apply w-full rounded-xl border border-selva-900/15 bg-white px-3.5 py-2.5 text-sm text-tinta placeholder:text-pizarra/60 focus:border-selva-600 focus:outline-none focus:ring-3 focus:ring-sol-300/60 aria-[invalid=true]:border-bandera-rojo;
+  }
+
+@utility label {
+    @apply mb-1.5 block text-sm font-medium text-selva-900;
+  }
+
+@utility field-error {
+    @apply mt-1 text-xs font-medium text-bandera-rojo;
+  }
+
+@utility script {
+    @apply font-script font-bold;
+  }
+
+@utility eyebrow {
+    @apply font-script text-2xl font-bold text-tierra-500;
+  }
+
+@utility container-tc {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+@utility table-tc {
+    @apply w-full text-left text-sm;
+  & th {
+    @apply border-b border-selva-900/10 px-3 py-2 text-xs font-semibold tracking-wide text-pizarra uppercase;
+  }
+  & td {
+    @apply border-b border-selva-900/5 px-3 py-2.5 align-top;
+  }
+}
+
+@utility tricolor {
+    background: linear-gradient(90deg, #f6b40e 0 50%, #1f4e9e 50% 75%, #c8102e 75% 100%);
+  }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes flotar {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.animate-flotar {
+  animation: flotar 6s ease-in-out infinite;
+}
