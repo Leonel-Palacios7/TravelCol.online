@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type { NextConfig } from 'next';
 
 const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
@@ -22,6 +23,8 @@ const csp = [
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // Monorepo: el rastreo de archivos parte de la raíz para incluir paquetes del workspace.
+  outputFileTracingRoot: path.join(__dirname, '../../'),
   poweredByHeader: false,
   reactStrictMode: true,
   transpilePackages: ['@travelcol/contracts'],

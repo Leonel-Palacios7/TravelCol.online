@@ -1,0 +1,27 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN}, www.{$DOMAIN} {
+	@www host www.{$DOMAIN}
+	redir @www https://{$DOMAIN}{uri} permanent
+
+	encode zstd gzip
+	# El webhook de Wompi llega a la API directamente.
+	handle /api/v1/webhooks/* {
+		reverse_proxy api:4000
+	}
+	# Todo lo demás va a la web; la web reenvía /api/v1 a la API por la red interna
+	# (cookies del mismo origen).
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header {
+		-Server
+	}
+	log {
+		output stdout
+		format json
+	}
+}

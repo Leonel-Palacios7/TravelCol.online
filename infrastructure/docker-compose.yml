@@ -1,0 +1,100 @@
+# Despliegue de referencia en un servidor con Docker (un solo nodo).
+#   cp .env.example infrastructure/.env   # completar secretos
+#   docker compose -f infrastructure/docker-compose.yml --env-file infrastructure/.env up -d --build
+# Ver docs/despliegue.md (incluye rollback y respaldos).
+name: travelcol
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [interna]
+
+  # Migraciones no destructivas (prisma migrate deploy) antes de iniciar la API.
+  migrate:
+    build: { context: .., dockerfile: infrastructure/docker/api.Dockerfile }
+    image: travelcol-api:${TAG:-latest}
+    command: ["node_modules/.bin/prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+    networks: [interna]
+
+  api:
+    image: travelcol-api:${TAG:-latest}
+    init: true
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      WEB_URL: https://${DOMAIN}
+      CORS_ORIGINS: https://${DOMAIN}
+      TRUST_PROXY: "true"
+      IP_HASH_SALT: ${IP_HASH_SALT:?Define IP_HASH_SALT}
+      WOMPI_ENV: ${WOMPI_ENV:-SANDBOX}
+      WOMPI_PUBLIC_KEY: ${WOMPI_PUBLIC_KEY:?}
+      WOMPI_PRIVATE_KEY: ${WOMPI_PRIVATE_KEY:?}
+      WOMPI_INTEGRITY_SECRET: ${WOMPI_INTEGRITY_SECRET:?}
+      WOMPI_EVENTS_SECRET: ${WOMPI_EVENTS_SECRET:?}
+      WOMPI_API_URL: ${WOMPI_API_URL:-https://sandbox.wompi.co/v1}
+      WOMPI_VERIFY_WITH_API: ${WOMPI_VERIFY_WITH_API:-true}
+      DEFAULT_COMMISSION_BPS: ${DEFAULT_COMMISSION_BPS:-1200}
+      SWAGGER_ENABLED: "false"
+    volumes:
+      - storage:/data/storage
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    networks: [interna]
+
+  web:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/web.Dockerfile
+      args:
+        API_INTERNAL_URL: http://api:4000
+        NEXT_PUBLIC_SITE_URL: https://${DOMAIN}
+    image: travelcol-web:${TAG:-latest}
+    init: true
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:4000
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [interna]
+
+  # Proxy inverso con HTTPS automático (Let's Encrypt). Único servicio expuesto.
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?}
+      ACME_EMAIL: ${ACME_EMAIL:?}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [web]
+    networks: [interna]
+
+volumes:
+  pgdata:
+  storage:
+  caddy_data:
+  caddy_config:
+
+networks:
+  interna:

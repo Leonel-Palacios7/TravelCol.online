@@ -6,7 +6,10 @@ import path from 'node:path';
  * indicada en DATABASE_URL, que DEBE ser desechable (nunca producción): ver docs/pruebas.md.
  * Los valores de Wompi son ficticios y exclusivos de E2E; los eventos se firman con ese secreto.
  */
+const root = path.resolve(__dirname, '../..');
+
 export const E2E_ENV = {
+  STORAGE_DIR: path.join(root, '.e2e-storage'),
   NODE_ENV: 'test',
   WOMPI_ENV: 'SANDBOX',
   WOMPI_PUBLIC_KEY: process.env.WOMPI_PUBLIC_KEY ?? 'pub_test_E2E_ONLY',
@@ -24,7 +27,6 @@ export const E2E_ENV = {
 };
 Object.assign(process.env, E2E_ENV);
 
-const root = path.resolve(__dirname, '../..');
 
 export default defineConfig({
   testDir: '.',
