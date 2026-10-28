@@ -10,3 +10,8 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - unrs-resolver
+# Parches de seguridad en dependencias transitivas (pnpm audit). Retirar cuando los paquetes padre los incluyan.
+overrides:
+  multer: ">=2.5.0 <3"
+  js-yaml: ">=5.4.1 <6"
+  deepmerge-ts: ">=8.0.0 <9"

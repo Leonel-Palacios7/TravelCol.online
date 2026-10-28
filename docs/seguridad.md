@@ -42,7 +42,7 @@ Detalle en [pagos-wompi.md](pagos-wompi.md) y [flujo-reservas-y-pagos.md](flujo-
 | Fotos sin eliminación de metadatos EXIF | Pueden filtrar ubicación GPS del proveedor | Reprocesar con `sharp` al subir (hoy se advierte al usuario) |
 | Sin segundo factor (MFA) para administración | Una contraseña filtrada da acceso total | TOTP obligatorio para ADMIN y SUPPORT |
 | Sin escaneo antivirus de documentos | Un PDF malicioso que pase la validación | ClamAV o servicio equivalente antes de guardar |
-| Sin auditoría de dependencias programada | Vulnerabilidades conocidas sin detectar | `pnpm audit` y Dependabot en el CI |
+| Auditoría de dependencias solo informativa | Una vulnerabilidad nueva no detiene el CI | Dependabot semanal ya activo y `pnpm audit --prod` sin hallazgos (28-oct-2026, con `overrides` para multer, js-yaml y deepmerge-ts); falta volver bloqueante el paso de auditoría |
 | Sin prueba de penetración | Fallas no cubiertas por las pruebas | Contratar revisión externa antes del lanzamiento |
 | Sin monitoreo ni alertas | Incidentes detectados tarde | Centralizar registros y alertar sobre eventos `INVALID_SIGNATURE`, `MISMATCH` y pagos pendientes antiguos |
 
