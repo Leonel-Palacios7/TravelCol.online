@@ -13,3 +13,7 @@ updates:
   - package-ecosystem: docker
     directory: /infrastructure/docker
     schedule: { interval: monthly }
+    ignore:
+      # Mantener Node en la línea LTS (22); los saltos de versión mayor se hacen a mano.
+      - dependency-name: node
+        update-types: [version-update:semver-major]
