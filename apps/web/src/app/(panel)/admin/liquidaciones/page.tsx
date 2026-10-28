@@ -4,7 +4,7 @@ import { PanelTitle, Section, TableCard } from '@/components/panel/PanelShell';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionDialog } from '@/components/panel/ActionDialog';
 
-interface Balance { providerId: string; businessName: string; unsettledCop: number }
+interface Balance { providerId: string; businessName: string; unsettledCop: number; settleableCop: number; pendingServiceCop: number }
 interface Settlement {
   id: string; periodEnd: string; grossCop: number; commissionCop: number; refundsCop: number; netCop: number; status: string;
   payoutReference: string | null; paidAt: string | null; createdAt: string; provider: { businessName: string }; _count: { entries: number };
@@ -16,24 +16,27 @@ export default async function LiquidacionesPage() {
   return (
     <>
       <PanelTitle title="Liquidaciones a proveedores">
-        Una liquidación agrupa los movimientos pendientes hasta la fecha de corte. El pago se hace fuera de la plataforma y se registra con su referencia.
+        Una liquidación agrupa los movimientos de servicios ya prestados hasta la fecha de corte. El pago se hace fuera de la plataforma y se registra con su referencia.
       </PanelTitle>
       <Section title="Saldos por liquidar">
         <TableCard>
-          <thead><tr><th>Proveedor</th><th className="text-right">Saldo</th><th className="text-right">Acción</th></tr></thead>
+          <thead><tr><th>Proveedor</th><th className="text-right">Liquidable hoy</th><th className="text-right">Servicios por prestar</th><th className="text-right">Acción</th></tr></thead>
           <tbody>
             {balances.map((b) => (
               <tr key={b.providerId}>
                 <td>{b.businessName}</td>
-                <td className={`text-right font-mono ${b.unsettledCop < 0 ? 'text-bandera-rojo' : ''}`}>{formatCOP(b.unsettledCop)}</td>
+                <td className={`text-right font-mono ${b.settleableCop < 0 ? 'text-bandera-rojo' : ''}`}>{formatCOP(b.settleableCop)}</td>
+                <td className="text-right font-mono text-pizarra">{formatCOP(b.pendingServiceCop)}</td>
                 <td className="text-right">
-                  {b.unsettledCop > 0 && (
+                  {b.settleableCop > 0 ? (
                     <ActionDialog label="Generar liquidación" variant="primary" title={`Liquidar a ${b.businessName}`} description="Incluye los movimientos sin liquidar hasta la fecha de corte (hora de Colombia)." endpoint="/admin/settlements" fixed={{ providerId: b.providerId }} fields={[{ name: 'periodEnd', label: 'Fecha de corte', type: 'date', required: true, defaultValue: today }]} submitLabel="Generar" />
+                  ) : (
+                    <span className="text-xs text-pizarra">Se liquida después de prestado el servicio</span>
                   )}
                 </td>
               </tr>
             ))}
-            {!balances.length && <tr><td colSpan={3} className="text-pizarra">No hay saldos pendientes.</td></tr>}
+            {!balances.length && <tr><td colSpan={4} className="text-pizarra">No hay saldos pendientes.</td></tr>}
           </tbody>
         </TableCard>
       </Section>

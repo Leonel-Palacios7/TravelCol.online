@@ -316,10 +316,32 @@ export class AdminService {
   }
 
   // ---------------- Liquidaciones ----------------
+  /**
+   * Saldos sin liquidar por proveedor. `settleableCop` solo incluye movimientos de servicios ya
+   * prestados (misma regla que createSettlement); el resto queda pendiente hasta la fecha del servicio.
+   */
   async balances() {
-    const rows = await this.prisma.ledgerEntry.groupBy({ by: ['providerId'], where: { settlementId: null }, _sum: { amountCop: true } });
-    const providers = await this.prisma.providerProfile.findMany({ where: { id: { in: rows.map((r) => r.providerId) } }, select: { id: true, businessName: true } });
-    return rows.map((r) => ({ providerId: r.providerId, businessName: providers.find((p) => p.id === r.providerId)?.businessName ?? '', unsettledCop: r._sum.amountCop ?? 0 }));
+    const now = new Date();
+    const [all, ready] = await Promise.all([
+      this.prisma.ledgerEntry.groupBy({ by: ['providerId'], where: { settlementId: null }, _sum: { amountCop: true } }),
+      this.prisma.ledgerEntry.groupBy({
+        by: ['providerId'],
+        where: { settlementId: null, OR: [{ bookingId: null }, { booking: { startsAt: { lte: now } } }] },
+        _sum: { amountCop: true },
+      }),
+    ]);
+    const providers = await this.prisma.providerProfile.findMany({ where: { id: { in: all.map((r) => r.providerId) } }, select: { id: true, businessName: true } });
+    return all.map((r) => {
+      const settleableCop = ready.find((x) => x.providerId === r.providerId)?._sum.amountCop ?? 0;
+      const unsettledCop = r._sum.amountCop ?? 0;
+      return {
+        providerId: r.providerId,
+        businessName: providers.find((p) => p.id === r.providerId)?.businessName ?? '',
+        unsettledCop,
+        settleableCop,
+        pendingServiceCop: unsettledCop - settleableCop,
+      };
+    });
   }
 
   listSettlements() {

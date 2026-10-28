@@ -73,7 +73,7 @@ export function ActionDialog({
       <button type="button" className={`${BTN[variant]} ${small ? 'px-3.5 py-1.5 text-xs' : ''}`} onClick={() => { setError(null); ref.current?.showModal(); }}>
         {label}
       </button>
-      <dialog ref={ref} aria-labelledby={`${uid}-t`} className="m-auto w-[min(92vw,30rem)] rounded-xl2 bg-white p-0 shadow-suave backdrop:bg-selva-950/50">
+      <dialog ref={ref} aria-labelledby={`${uid}-t`} className="m-auto w-[min(92vw,30rem)] rounded-xl2 bg-white p-0 text-left font-normal text-tinta shadow-suave backdrop:bg-selva-950/50">
         <form
           className="space-y-4 p-6"
           onSubmit={(e) => {

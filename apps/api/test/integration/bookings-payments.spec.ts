@@ -259,9 +259,13 @@ describe('Cancelación, reembolso y liquidación', () => {
   it('liquidación: agrupa saldo positivo, registra el pago con referencia y deja el saldo pendiente en cero', async () => {
     const { slot, tc, provider } = await setup({ priceCop: 50_000, startsInHours: 24 * 3 });
     await paidBooking(ctx, tc, slot.id, 2);
+    const admin = await login(ctx.app, (await createUser(ctx.prisma, 'ADMIN')).email);
+    const balanceOf = async () => ((await admin.get('/admin/settlements/balances')).body as Array<{ providerId: string; settleableCop: number; pendingServiceCop: number }>).find((b) => b.providerId === provider.id);
+    // Antes de prestarse el servicio el saldo no es liquidable.
+    expect(await balanceOf()).toMatchObject({ settleableCop: 0, pendingServiceCop: 88_000 });
     // Simula que la experiencia ya ocurrió moviendo la fecha (prueba de corte).
     await ctx.prisma.booking.updateMany({ where: { providerId: provider.id }, data: { startsAt: new Date(Date.now() - 86_400_000) } });
-    const admin = await login(ctx.app, (await createUser(ctx.prisma, 'ADMIN')).email);
+    expect(await balanceOf()).toMatchObject({ settleableCop: 88_000, pendingServiceCop: 0 });
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
     const s = await admin.post('/admin/settlements', { providerId: provider.id, periodEnd: today });
     expect(s.status).toBe(201);
