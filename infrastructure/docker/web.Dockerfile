@@ -2,7 +2,7 @@
 # Imagen de la web (Next.js, salida standalone). Construir desde la raíz del repositorio:
 #   docker build -f infrastructure/docker/web.Dockerfile --build-arg API_INTERNAL_URL=http://api:4000 -t travelcol-web .
 # API_INTERNAL_URL y NEXT_PUBLIC_SITE_URL se fijan en la compilación (reescrituras y robots/sitemap).
-FROM node:22-bookworm-slim AS base
+FROM node:25-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true NEXT_TELEMETRY_DISABLED=1
 # Opcional: CA de un proxy corporativo (docker build --secret id=ca_bundle,src=ruta/ca.crt).
 RUN --mount=type=secret,id=ca_bundle,required=false if [ -f /run/secrets/ca_bundle ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/ca_bundle npm_config_cafile=/run/secrets/ca_bundle; fi; corepack enable && corepack prepare pnpm@10.28.0 --activate
@@ -23,7 +23,7 @@ COPY packages/contracts packages/contracts
 COPY apps/web apps/web
 RUN pnpm --filter @travelcol/contracts build && pnpm --filter @travelcol/web build
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:25-bookworm-slim AS runtime
 ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 COPY --from=build --chown=node:node /repo/apps/web/.next/standalone ./

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # Imagen de la API (NestJS + Prisma). Construir desde la raíz del repositorio:
 #   docker build -f infrastructure/docker/api.Dockerfile -t travelcol-api .
-FROM node:22-bookworm-slim AS base
+FROM node:25-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true
 # Opcional: CA de un proxy corporativo (docker build --secret id=ca_bundle,src=ruta/ca.crt).
 RUN --mount=type=secret,id=ca_bundle,required=false if [ -f /run/secrets/ca_bundle ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/ca_bundle npm_config_cafile=/run/secrets/ca_bundle; fi; corepack enable && corepack prepare pnpm@10.28.0 --activate
@@ -20,7 +20,7 @@ RUN pnpm --filter @travelcol/contracts build && pnpm --filter @travelcol/api bui
 # Copia autocontenida solo con dependencias de producción.
 RUN --mount=type=secret,id=ca_bundle,required=false if [ -f /run/secrets/ca_bundle ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/ca_bundle npm_config_cafile=/run/secrets/ca_bundle; fi; pnpm --filter @travelcol/api deploy --prod --legacy /out && cd /out && ./node_modules/.bin/prisma generate
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:25-bookworm-slim AS runtime
 ENV NODE_ENV=production PORT=4000 STORAGE_DIR=/data/storage
 WORKDIR /app
 COPY --from=build --chown=node:node /out ./
