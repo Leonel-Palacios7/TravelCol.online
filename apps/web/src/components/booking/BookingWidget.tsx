@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarDays, Loader2, Minus, Plus, ShieldCheck } from 'lucide-react';
 import { createBookingSchema, describeCancellationPolicy, type AvailabilitySlotDto, type CancellationPolicy, type CreateBookingInput, type BookingDto } from '@travelcol/contracts';
@@ -31,7 +31,7 @@ export function BookingWidget({ serviceId, slug, priceCop, minParticipants, maxP
     defaultValues: { availabilityId: '', participants: Array.from({ length: minParticipants }, () => ({ fullName: '' })), contactPhone: '' },
   });
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'participants' });
-  const selectedId = form.watch('availabilityId');
+  const selectedId = useWatch({ control: form.control, name: 'availabilityId' });
 
   useEffect(() => {
     let alive = true;

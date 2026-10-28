@@ -77,7 +77,7 @@ export function MediaManager({ serviceId, media, editable }: { serviceId: string
             {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ImagePlus className="h-4 w-4" aria-hidden />}Subir
           </button>
           {error && <div className="sm:col-span-3"><FormAlert>{error}</FormAlert></div>}
-          <p className="text-xs text-pizarra sm:col-span-3">Sube solo fotografías propias o con licencia. Validamos el tipo real del archivo y eliminamos metadatos no necesarios.</p>
+          <p className="text-xs text-pizarra sm:col-span-3">Sube solo fotografías propias o con licencia. Validamos el tipo real del archivo. Antes de subir, quita la ubicación GPS de tus fotos si no quieres compartirla.</p>
         </div>
       )}
     </div>

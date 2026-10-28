@@ -41,6 +41,11 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-white/10">
+        <p className="container-tc py-4 text-xs leading-relaxed text-white/60">
+          TravelCol rechaza la explotación y el abuso sexual de niñas, niños y adolescentes en el turismo (Ley 679 de 2001 y Ley 1336 de 2009). Si conoces un caso, denúncialo en la Línea 141 del ICBF.
+        </p>
+      </div>
+      <div className="border-t border-white/10">
         <div className="container-tc flex flex-col items-center justify-between gap-3 py-5 text-xs text-white/55 sm:flex-row">
           <p>© {new Date().getFullYear()} TravelCol.online · Hecho en Colombia</p>
           <div className="tricolor h-1.5 w-24 rounded-full" aria-hidden />
