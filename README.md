@@ -92,4 +92,4 @@ Trabaja en una rama, abre un pull request contra `main` y espera a que el CI pas
 
 ## Documentación
 
-Empieza por [docs/README.md](docs/README.md), el índice de toda la documentación. El informe por fases está en [docs/informe-por-fases.md](docs/informe-por-fases.md).
+La documentación también está publicada como sitio en <https://leonel-palacios7.github.io/TravelCol.online/>. Empieza por [docs/README.md](docs/README.md), el índice de toda la documentación. El informe por fases está en [docs/informe-por-fases.md](docs/informe-por-fases.md).

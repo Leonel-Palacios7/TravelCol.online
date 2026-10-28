@@ -1,0 +1,89 @@
+site_name: TravelCol.online · Documentación
+site_description: Documentación técnica, funcional, de seguridad y cumplimiento del marketplace turístico TravelCol.online.
+site_url: https://leonel-palacios7.github.io/TravelCol.online/
+repo_url: https://github.com/Leonel-Palacios7/TravelCol.online
+repo_name: Leonel-Palacios7/TravelCol.online
+edit_uri: edit/main/docs/
+docs_dir: docs
+copyright: TravelCol.online · Documentación del MVP (no constituye concepto jurídico)
+
+theme:
+  name: material
+  language: es
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: amber
+      toggle: { icon: material/weather-night, name: Modo oscuro }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: amber
+      toggle: { icon: material/weather-sunny, name: Modo claro }
+  font: { text: Poppins, code: JetBrains Mono }
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search: { lang: es }
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc: { permalink: true }
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+validation:
+  links:
+    not_found: warn
+    absolute_links: info
+    unrecognized_links: info
+
+nav:
+  - Inicio: README.md
+  - Informe:
+      - Fase 0 · Diagnóstico: 00-fase-0-diagnostico.md
+      - Informe por fases (A–E): informe-por-fases.md
+      - Brecha a producción: brecha-a-produccion.md
+  - Arquitectura:
+      - Arquitectura: arquitectura.md
+      - Modelo de datos: modelo-de-datos.md
+      - Diccionario de datos: modelo-de-datos.generado.md
+      - Permisos: permisos.md
+      - Decisiones (ADR):
+          - 0001 Monorepo y stack: adr/0001-monorepo-y-stack.md
+          - 0002 PostgreSQL y Prisma: adr/0002-postgresql-prisma.md
+          - 0003 Sesiones y CSRF: adr/0003-sesiones-y-csrf.md
+          - 0004 Dinero y comisión: adr/0004-dinero-y-comision.md
+          - 0005 Pagos Wompi: adr/0005-pagos-wompi.md
+          - 0006 Libro contable: adr/0006-libro-contable.md
+          - 0007 Inventario: adr/0007-inventario.md
+          - 0008 Archivos: adr/0008-archivos.md
+          - 0009 Ilustraciones: adr/0009-ilustraciones.md
+  - Negocio:
+      - Reservas y pagos: flujo-reservas-y-pagos.md
+      - Pagos con Wompi: pagos-wompi.md
+      - Finanzas y comisiones: finanzas-comisiones.md
+  - Desarrollo:
+      - API: api.md
+      - Variables de entorno: variables-de-entorno.md
+      - Desarrollo local: desarrollo-local.md
+      - Pruebas: pruebas.md
+      - Diseño: diseno.md
+  - Operación:
+      - Despliegue: despliegue.md
+      - Respaldos: respaldos.md
+  - Seguridad y cumplimiento:
+      - Seguridad: seguridad.md
+      - Cumplimiento normativo: cumplimiento.md

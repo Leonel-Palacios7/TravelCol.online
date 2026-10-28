@@ -13,7 +13,7 @@
 pnpm dev                    # API :4000 (con recarga) y web :3000
 ```
 
-- Web: http://localhost:3000. Cuentas demo en el [README](../README.md).
+- Web: http://localhost:3000. Cuentas demo en el [README](https://github.com/Leonel-Palacios7/TravelCol.online#readme).
 - API y Swagger: http://localhost:4000/api/docs.
 - Correos: con `MAIL_DRIVER=log` aparecen en la consola de la API y en la tabla `email_outbox`. Ahí están los enlaces de verificación y de recuperación.
 
