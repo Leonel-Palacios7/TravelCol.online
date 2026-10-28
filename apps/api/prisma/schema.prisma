@@ -1,0 +1,774 @@
+// TravelCol.online — modelo de datos
+// Convenciones: claves primarias UUID, tablas en snake_case, fechas en UTC (timestamptz),
+// importes monetarios en pesos colombianos ENTEROS (Int). Ver docs/modelo-de-datos.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================ Enums ============================
+
+enum UserRole {
+  TOURIST
+  PROVIDER
+  SUPPORT
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum AuthTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+enum ProviderStatus {
+  PENDING_REVIEW
+  APPROVED
+  SUSPENDED
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ProviderDocumentType {
+  RNT
+  RUT
+  CAMARA_COMERCIO
+  IDENTIFICACION
+  POLIZA
+  OTRO
+}
+
+enum DocumentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ServiceStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  REJECTED
+  ARCHIVED
+}
+
+enum CancellationPolicy {
+  FLEXIBLE
+  MODERATE
+  STRICT
+}
+
+enum AvailabilityStatus {
+  OPEN
+  CLOSED
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  APPROVED
+  DECLINED
+  VOIDED
+  ERROR
+}
+
+enum PaymentEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+enum RefundStatus {
+  REQUESTED
+  EXECUTED
+  REJECTED
+}
+
+enum LedgerEntryType {
+  SALE
+  COMMISSION
+  REFUND
+  COMMISSION_REVERSAL
+  PAYOUT
+  ADJUSTMENT
+}
+
+enum SettlementStatus {
+  DRAFT
+  PAID
+  CANCELLED
+}
+
+enum ReviewStatus {
+  PUBLISHED
+  HIDDEN
+}
+
+enum LegalDocumentType {
+  TERMS
+  PRIVACY
+  CANCELLATION
+  PROVIDER_TERMS
+}
+
+enum PqrType {
+  PETICION
+  QUEJA
+  RECLAMO
+  SUGERENCIA
+  DATOS_PERSONALES
+}
+
+enum PqrStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ============================ Identidad ============================
+
+model User {
+  id                String     @id @default(uuid()) @db.Uuid
+  email             String     @unique @db.VarChar(254)
+  passwordHash      String     @map("password_hash")
+  fullName          String     @map("full_name") @db.VarChar(120)
+  phone             String?    @db.VarChar(20)
+  role              UserRole   @default(TOURIST)
+  status            UserStatus @default(ACTIVE)
+  emailVerifiedAt   DateTime?  @map("email_verified_at") @db.Timestamptz(3)
+  marketingOptIn    Boolean    @default(false) @map("marketing_opt_in")
+  failedLoginCount  Int        @default(0) @map("failed_login_count")
+  lockedUntil       DateTime?  @map("locked_until") @db.Timestamptz(3)
+  lastLoginAt       DateTime?  @map("last_login_at") @db.Timestamptz(3)
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sessions             AuthSession[]
+  tokens               AuthToken[]
+  provider             ProviderProfile?
+  applications         ProviderApplication[]
+  bookings             Booking[]
+  favorites            Favorite[]
+  reviews              Review[]
+  notifications        Notification[]
+  consents             ConsentRecord[]
+  auditLogs            AuditLog[]           @relation("AuditActor")
+  bookingStatusChanges BookingStatusHistory[]
+
+  @@index([role, status])
+  @@map("users")
+}
+
+/// Sesión opaca: el navegador guarda un token aleatorio en cookie HttpOnly;
+/// la base de datos solo almacena su hash SHA-256 (revocable).
+model AuthSession {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash") @db.Char(64)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  userAgent  String?   @map("user_agent") @db.VarChar(255)
+  ipHash     String?   @map("ip_hash") @db.Char(64)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
+model AuthToken {
+  id        String        @id @default(uuid()) @db.Uuid
+  userId    String        @map("user_id") @db.Uuid
+  type      AuthTokenType
+  tokenHash String        @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime      @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime?     @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@map("auth_tokens")
+}
+
+// ============================ Proveedores ============================
+
+model ProviderApplication {
+  id              String            @id @default(uuid()) @db.Uuid
+  userId          String            @map("user_id") @db.Uuid
+  businessName    String            @map("business_name") @db.VarChar(120)
+  legalName       String            @map("legal_name") @db.VarChar(160)
+  taxId           String            @map("tax_id") @db.VarChar(20)
+  rntNumber       String?           @map("rnt_number") @db.VarChar(10)
+  contactPhone    String            @map("contact_phone") @db.VarChar(20)
+  description     String
+  destinationId   String            @map("destination_id") @db.Uuid
+  status          ApplicationStatus @default(PENDING)
+  reviewNotes     String?           @map("review_notes")
+  reviewedById    String?           @map("reviewed_by_id") @db.Uuid
+  reviewedAt      DateTime?         @map("reviewed_at") @db.Timestamptz(3)
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  destination Destination @relation(fields: [destinationId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@map("provider_applications")
+}
+
+model ProviderProfile {
+  id            String         @id @default(uuid()) @db.Uuid
+  userId        String         @unique @map("user_id") @db.Uuid
+  slug          String         @unique @db.VarChar(140)
+  businessName  String         @map("business_name") @db.VarChar(120)
+  legalName     String         @map("legal_name") @db.VarChar(160)
+  taxId         String         @unique @map("tax_id") @db.VarChar(20)
+  rntNumber     String?        @map("rnt_number") @db.VarChar(10)
+  rntVerifiedAt DateTime?      @map("rnt_verified_at") @db.Timestamptz(3)
+  contactPhone  String         @map("contact_phone") @db.VarChar(20)
+  description   String
+  destinationId String         @map("destination_id") @db.Uuid
+  status        ProviderStatus @default(PENDING_REVIEW)
+  isDemo        Boolean        @default(false) @map("is_demo")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  destination Destination          @relation(fields: [destinationId], references: [id])
+  documents   ProviderDocument[]
+  services    TourismService[]
+  bookings    Booking[]
+  ledger      LedgerEntry[]
+  settlements ProviderSettlement[]
+
+  @@index([status])
+  @@map("provider_profiles")
+}
+
+model ProviderDocument {
+  id           String               @id @default(uuid()) @db.Uuid
+  providerId   String               @map("provider_id") @db.Uuid
+  type         ProviderDocumentType
+  storageKey   String               @unique @map("storage_key")
+  originalName String               @map("original_name") @db.VarChar(200)
+  mimeType     String               @map("mime_type") @db.VarChar(60)
+  sizeBytes    Int                  @map("size_bytes")
+  sha256       String               @db.Char(64)
+  status       DocumentStatus       @default(PENDING)
+  reviewNotes  String?              @map("review_notes")
+  reviewedById String?              @map("reviewed_by_id") @db.Uuid
+  reviewedAt   DateTime?            @map("reviewed_at") @db.Timestamptz(3)
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  provider ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Restrict)
+
+  @@index([providerId, type])
+  @@index([status])
+  @@map("provider_documents")
+}
+
+// ============================ Catálogo ============================
+
+model Destination {
+  id          String   @id @default(uuid()) @db.Uuid
+  slug        String   @unique @db.VarChar(80)
+  name        String   @db.VarChar(120)
+  department  String   @db.VarChar(80)
+  summary     String   @db.VarChar(300)
+  description String
+  isPilot     Boolean  @default(false) @map("is_pilot")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  services     TourismService[]
+  providers    ProviderProfile[]
+  applications ProviderApplication[]
+
+  @@map("destinations")
+}
+
+model ServiceCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  slug        String   @unique @db.VarChar(80)
+  name        String   @db.VarChar(80)
+  description String   @db.VarChar(300)
+  icon        String   @db.VarChar(40)
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  services TourismService[]
+
+  @@map("service_categories")
+}
+
+model TourismService {
+  id                        String             @id @default(uuid()) @db.Uuid
+  providerId                String             @map("provider_id") @db.Uuid
+  categoryId                String             @map("category_id") @db.Uuid
+  destinationId             String             @map("destination_id") @db.Uuid
+  slug                      String             @unique @db.VarChar(140)
+  title                     String             @db.VarChar(120)
+  summary                   String             @db.VarChar(240)
+  description               String
+  priceCop                  Int                @map("price_cop")
+  durationMinutes           Int                @map("duration_minutes")
+  minParticipants           Int                @default(1) @map("min_participants")
+  maxParticipantsPerBooking Int                @default(10) @map("max_participants_per_booking")
+  minAge                    Int?               @map("min_age")
+  meetingPoint              String             @map("meeting_point") @db.VarChar(240)
+  latitude                  Decimal?           @db.Decimal(9, 6)
+  longitude                 Decimal?           @db.Decimal(9, 6)
+  includes                  String[]           @default([])
+  excludes                  String[]           @default([])
+  requirements              String[]           @default([])
+  cancellationPolicy        CancellationPolicy @map("cancellation_policy")
+  status                    ServiceStatus      @default(DRAFT)
+  rejectionReason           String?            @map("rejection_reason")
+  isDemo                    Boolean            @default(false) @map("is_demo")
+  publishedAt               DateTime?          @map("published_at") @db.Timestamptz(3)
+  createdAt                 DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  provider     ProviderProfile       @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  category     ServiceCategory       @relation(fields: [categoryId], references: [id])
+  destination  Destination           @relation(fields: [destinationId], references: [id])
+  media        ServiceMedia[]
+  availability ServiceAvailability[]
+  bookings     Booking[]
+  reviews      Review[]
+  favorites    Favorite[]
+
+  @@index([status, destinationId, categoryId])
+  @@index([status, priceCop])
+  @@index([providerId, status])
+  @@map("tourism_services")
+}
+
+model ServiceMedia {
+  id         String   @id @default(uuid()) @db.Uuid
+  serviceId  String   @map("service_id") @db.Uuid
+  /// Clave en el almacenamiento de objetos, o ruta de un recurso estático del sitio (ilustraciones de demo).
+  storageKey String   @map("storage_key")
+  alt        String   @db.VarChar(200)
+  credit     String?  @db.VarChar(200)
+  mimeType   String   @map("mime_type") @db.VarChar(60)
+  sizeBytes  Int      @default(0) @map("size_bytes")
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  service TourismService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId, sortOrder])
+  @@map("service_media")
+}
+
+/// Cupo programado de un servicio. Restricción CHECK (migración SQL):
+/// 0 <= reserved_count <= capacity. La reserva usa un UPDATE condicional atómico.
+model ServiceAvailability {
+  id            String             @id @default(uuid()) @db.Uuid
+  serviceId     String             @map("service_id") @db.Uuid
+  startsAt      DateTime           @map("starts_at") @db.Timestamptz(3)
+  capacity      Int
+  reservedCount Int                @default(0) @map("reserved_count")
+  status        AvailabilityStatus @default(OPEN)
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  service  TourismService @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  bookings Booking[]
+
+  @@unique([serviceId, startsAt])
+  @@index([startsAt, status])
+  @@map("service_availability")
+}
+
+// ============================ Reservas ============================
+
+model Booking {
+  id                 String             @id @default(uuid()) @db.Uuid
+  code               String             @unique @db.VarChar(16)
+  userId             String             @map("user_id") @db.Uuid
+  serviceId          String             @map("service_id") @db.Uuid
+  providerId         String             @map("provider_id") @db.Uuid
+  availabilityId     String             @map("availability_id") @db.Uuid
+  status             BookingStatus      @default(PENDING_PAYMENT)
+  participantsCount  Int                @map("participants_count")
+  // ---- Instantánea comercial (no depende del precio actual del catálogo) ----
+  serviceTitle       String             @map("service_title") @db.VarChar(120)
+  startsAt           DateTime           @map("starts_at") @db.Timestamptz(3)
+  unitPriceCop       Int                @map("unit_price_cop")
+  subtotalCop        Int                @map("subtotal_cop")
+  feesCop            Int                @default(0) @map("fees_cop")
+  totalCop           Int                @map("total_cop")
+  commissionBps      Int                @map("commission_bps")
+  commissionCop      Int                @map("commission_cop")
+  providerNetCop     Int                @map("provider_net_cop")
+  cancellationPolicy CancellationPolicy @map("cancellation_policy")
+  // ---------------------------------------------------------------------------
+  contactPhone       String             @map("contact_phone") @db.VarChar(20)
+  notes              String?            @db.VarChar(500)
+  holdExpiresAt      DateTime?          @map("hold_expires_at") @db.Timestamptz(3)
+  confirmedAt        DateTime?          @map("confirmed_at") @db.Timestamptz(3)
+  cancelledAt        DateTime?          @map("cancelled_at") @db.Timestamptz(3)
+  cancelReason       String?            @map("cancel_reason") @db.VarChar(500)
+  needsAttention     Boolean            @default(false) @map("needs_attention")
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  service       TourismService         @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  provider      ProviderProfile        @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  availability  ServiceAvailability    @relation(fields: [availabilityId], references: [id], onDelete: Restrict)
+  participants  BookingParticipant[]
+  statusHistory BookingStatusHistory[]
+  payments      Payment[]
+  refunds       Refund[]
+  ledger        LedgerEntry[]
+  review        Review?
+
+  @@index([userId, createdAt])
+  @@index([providerId, startsAt])
+  @@index([status, holdExpiresAt])
+  @@index([availabilityId])
+  @@map("bookings")
+}
+
+model BookingParticipant {
+  id        String @id @default(uuid()) @db.Uuid
+  bookingId String @map("booking_id") @db.Uuid
+  fullName  String @map("full_name") @db.VarChar(120)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@map("booking_participants")
+}
+
+model BookingStatusHistory {
+  id         String         @id @default(uuid()) @db.Uuid
+  bookingId  String         @map("booking_id") @db.Uuid
+  fromStatus BookingStatus? @map("from_status")
+  toStatus   BookingStatus  @map("to_status")
+  reason     String?        @db.VarChar(500)
+  actorId    String?        @map("actor_id") @db.Uuid
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  actor   User?   @relation(fields: [actorId], references: [id])
+
+  @@index([bookingId, createdAt])
+  @@map("booking_status_history")
+}
+
+// ============================ Pagos ============================
+
+/// Cada intento de checkout es un Payment con referencia única (equivale a PaymentAttempt).
+/// Índice único parcial (migración SQL): un solo pago APPROVED por reserva.
+model Payment {
+  id                    String             @id @default(uuid()) @db.Uuid
+  bookingId             String             @map("booking_id") @db.Uuid
+  reference             String             @unique @db.VarChar(64)
+  provider              String             @default("WOMPI") @db.VarChar(20)
+  environment           PaymentEnvironment
+  amountInCents         BigInt             @map("amount_in_cents")
+  currency              String             @default("COP") @db.Char(3)
+  status                PaymentStatus      @default(CREATED)
+  providerTransactionId String?            @unique @map("provider_transaction_id") @db.VarChar(64)
+  paymentMethodType     String?            @map("payment_method_type") @db.VarChar(40)
+  statusMessage         String?            @map("status_message") @db.VarChar(300)
+  lastEventAt           DateTime?          @map("last_event_at") @db.Timestamptz(3)
+  approvedAt            DateTime?          @map("approved_at") @db.Timestamptz(3)
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  booking       Booking               @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  webhookEvents PaymentWebhookEvent[]
+  refunds       Refund[]
+  ledger        LedgerEntry[]
+
+  @@index([bookingId, createdAt])
+  @@index([status, createdAt])
+  @@map("payments")
+}
+
+/// Evidencia inmutable de cada evento recibido. event_key es único → idempotencia.
+model PaymentWebhookEvent {
+  id               String    @id @default(uuid()) @db.Uuid
+  eventKey         String    @unique @map("event_key") @db.Char(64)
+  eventType        String    @map("event_type") @db.VarChar(60)
+  signatureValid   Boolean   @map("signature_valid")
+  transactionId    String?   @map("transaction_id") @db.VarChar(64)
+  reference        String?   @db.VarChar(64)
+  reportedStatus   String?   @map("reported_status") @db.VarChar(20)
+  eventTimestamp   BigInt?   @map("event_timestamp")
+  payload          Json
+  paymentId        String?   @map("payment_id") @db.Uuid
+  processingResult String?   @map("processing_result") @db.VarChar(300)
+  processedAt      DateTime? @map("processed_at") @db.Timestamptz(3)
+  receivedAt       DateTime  @default(now()) @map("received_at") @db.Timestamptz(3)
+
+  payment Payment? @relation(fields: [paymentId], references: [id])
+
+  @@index([reference])
+  @@index([receivedAt])
+  @@map("payment_webhook_events")
+}
+
+model Refund {
+  id                String       @id @default(uuid()) @db.Uuid
+  bookingId         String       @map("booking_id") @db.Uuid
+  paymentId         String       @map("payment_id") @db.Uuid
+  amountCop         Int          @map("amount_cop")
+  refundPercent     Int          @map("refund_percent")
+  status            RefundStatus @default(REQUESTED)
+  reason            String       @db.VarChar(500)
+  requestedById     String?      @map("requested_by_id") @db.Uuid
+  processedById     String?      @map("processed_by_id") @db.Uuid
+  externalReference String?      @map("external_reference") @db.VarChar(120)
+  notes             String?      @db.VarChar(500)
+  executedAt        DateTime?    @map("executed_at") @db.Timestamptz(3)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  booking Booking       @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  payment Payment       @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  ledger  LedgerEntry[]
+
+  @@index([status, createdAt])
+  @@index([bookingId])
+  @@map("refunds")
+}
+
+// ============================ Finanzas ============================
+
+/// Libro de movimientos append-only por proveedor. amount_cop con signo:
+/// positivo = a favor del proveedor, negativo = a cargo del proveedor.
+/// idempotency_key único evita asientos duplicados.
+model LedgerEntry {
+  id             String          @id @default(uuid()) @db.Uuid
+  providerId     String          @map("provider_id") @db.Uuid
+  type           LedgerEntryType
+  amountCop      Int             @map("amount_cop")
+  description    String          @db.VarChar(300)
+  idempotencyKey String          @unique @map("idempotency_key") @db.VarChar(120)
+  bookingId      String?         @map("booking_id") @db.Uuid
+  paymentId      String?         @map("payment_id") @db.Uuid
+  refundId       String?         @map("refund_id") @db.Uuid
+  settlementId   String?         @map("settlement_id") @db.Uuid
+  createdById    String?         @map("created_by_id") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  provider   ProviderProfile     @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  booking    Booking?            @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  payment    Payment?            @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  refund     Refund?             @relation(fields: [refundId], references: [id], onDelete: Restrict)
+  settlement ProviderSettlement? @relation(fields: [settlementId], references: [id], onDelete: Restrict)
+
+  @@index([providerId, createdAt])
+  @@index([providerId, settlementId])
+  @@map("ledger_entries")
+}
+
+model ProviderSettlement {
+  id              String           @id @default(uuid()) @db.Uuid
+  providerId      String           @map("provider_id") @db.Uuid
+  periodEnd       DateTime         @map("period_end") @db.Timestamptz(3)
+  grossCop        Int              @map("gross_cop")
+  commissionCop   Int              @map("commission_cop")
+  refundsCop      Int              @map("refunds_cop")
+  netCop          Int              @map("net_cop")
+  status          SettlementStatus @default(DRAFT)
+  payoutReference String?          @map("payout_reference") @db.VarChar(120)
+  notes           String?          @db.VarChar(500)
+  createdById     String           @map("created_by_id") @db.Uuid
+  paidById        String?          @map("paid_by_id") @db.Uuid
+  paidAt          DateTime?        @map("paid_at") @db.Timestamptz(3)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  provider ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  entries  LedgerEntry[]
+
+  @@index([providerId, createdAt])
+  @@index([status])
+  @@map("provider_settlements")
+}
+
+/// Configuración comercial del servidor (p. ej. commission_bps). Cambios auditados.
+model PlatformSetting {
+  key         String   @id @db.VarChar(60)
+  value       Json
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("platform_settings")
+}
+
+// ============================ Comunidad ============================
+
+model Review {
+  id           String       @id @default(uuid()) @db.Uuid
+  bookingId    String       @unique @map("booking_id") @db.Uuid
+  userId       String       @map("user_id") @db.Uuid
+  serviceId    String       @map("service_id") @db.Uuid
+  rating       Int
+  comment      String
+  status       ReviewStatus @default(PUBLISHED)
+  moderationNote String?    @map("moderation_note") @db.VarChar(300)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  booking Booking        @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  service TourismService @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@index([serviceId, status, createdAt])
+  @@map("reviews")
+}
+
+model Favorite {
+  userId    String   @map("user_id") @db.Uuid
+  serviceId String   @map("service_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service TourismService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, serviceId])
+  @@map("favorites")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String    @db.VarChar(60)
+  title     String    @db.VarChar(160)
+  body      String    @db.VarChar(600)
+  link      String?   @db.VarChar(300)
+  readAt    DateTime? @map("read_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
+}
+
+// ============================ Cumplimiento y auditoría ============================
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  action     String   @db.VarChar(80)
+  entityType String   @map("entity_type") @db.VarChar(60)
+  entityId   String?  @map("entity_id") @db.VarChar(64)
+  metadata   Json?
+  ipHash     String?  @map("ip_hash") @db.Char(64)
+  requestId  String?  @map("request_id") @db.VarChar(64)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model LegalDocumentVersion {
+  id          String            @id @default(uuid()) @db.Uuid
+  type        LegalDocumentType
+  version     String            @db.VarChar(20)
+  title       String            @db.VarChar(160)
+  content     String
+  publishedAt DateTime          @map("published_at") @db.Timestamptz(3)
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  consents ConsentRecord[]
+
+  @@unique([type, version])
+  @@index([type, publishedAt])
+  @@map("legal_document_versions")
+}
+
+model ConsentRecord {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  legalDocumentId   String   @map("legal_document_id") @db.Uuid
+  purpose           String   @db.VarChar(60)
+  granted           Boolean
+  ipHash            String?  @map("ip_hash") @db.Char(64)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  legalDocument LegalDocumentVersion @relation(fields: [legalDocumentId], references: [id])
+
+  @@index([userId, purpose])
+  @@map("consent_records")
+}
+
+/// PQR (peticiones, quejas, reclamos) y solicitudes de titulares de datos.
+model SupportTicket {
+  id         String    @id @default(uuid()) @db.Uuid
+  radicado   String    @unique @db.VarChar(20)
+  userId     String?   @map("user_id") @db.Uuid
+  fullName   String    @map("full_name") @db.VarChar(120)
+  email      String    @db.VarChar(254)
+  type       PqrType
+  subject    String    @db.VarChar(160)
+  message    String
+  status     PqrStatus @default(OPEN)
+  response   String?
+  closedAt   DateTime? @map("closed_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([status, createdAt])
+  @@map("support_tickets")
+}
+
+/// Bandeja de salida de correos (patrón outbox). El envío real requiere configurar un
+/// proveedor SMTP/API; en desarrollo el despachador solo registra en el log.
+model EmailOutbox {
+  id        String       @id @default(uuid()) @db.Uuid
+  toEmail   String       @map("to_email") @db.VarChar(254)
+  template  String       @db.VarChar(60)
+  subject   String       @db.VarChar(200)
+  payload   Json
+  status    OutboxStatus @default(PENDING)
+  attempts  Int          @default(0)
+  lastError String?      @map("last_error") @db.VarChar(500)
+  sentAt    DateTime?    @map("sent_at") @db.Timestamptz(3)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([status, createdAt])
+  @@map("email_outbox")
+}
