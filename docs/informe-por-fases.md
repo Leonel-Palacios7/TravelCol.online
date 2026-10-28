@@ -115,4 +115,4 @@ pnpm --filter @travelcol/api build && pnpm --filter @travelcol/web build
 DATABASE_URL=postgresql://travelcol:travelcol_dev@localhost:5432/travelcol_e2e pnpm test:e2e
 ```
 
-Acceso a los módulos con las cuentas de demostración del [README](../README.md): `/cuenta` (turista), `/proveedor` (proveedor), `/admin` (administración y soporte).
+Acceso a los módulos con las cuentas de demostración del [README](https://github.com/Leonel-Palacios7/TravelCol.online#readme): `/cuenta` (turista), `/proveedor` (proveedor), `/admin` (administración y soporte).

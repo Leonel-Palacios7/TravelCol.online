@@ -18,3 +18,4 @@ backups/
 /storage/
 .e2e-storage/
 dist-seed/
+/site/
