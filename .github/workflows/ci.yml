@@ -33,7 +33,7 @@ jobs:
       TEST_DATABASE_SERVER_URL: postgresql://travelcol:travelcol_ci@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with: { version: 10.28.0 }
       - uses: actions/setup-node@v7
         with: { node-version: 22, cache: pnpm }
@@ -86,7 +86,7 @@ jobs:
       CI: "true"
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with: { version: 10.28.0 }
       - uses: actions/setup-node@v7
         with: { node-version: 22, cache: pnpm }
