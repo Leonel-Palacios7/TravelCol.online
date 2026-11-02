@@ -23,6 +23,6 @@
     "pg": "^8.23.1",
     "prettier": "3.6.2",
     "turbo": "2.11.10",
-    "typescript": "5.9.3"
+    "typescript": "7.0.2"
   }
 }
