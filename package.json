@@ -18,11 +18,11 @@
     "format": "prettier --write ."
   },
   "devDependencies": {
-    "@playwright/test": "1.64.1",
+    "@playwright/test": "1.65.1",
     "@types/pg": "^8.23.1",
     "pg": "^8.23.1",
-    "prettier": "3.6.2",
-    "turbo": "2.11.10",
+    "prettier": "3.10.1",
+    "turbo": "2.11.13",
     "typescript": "5.9.3"
   }
 }
